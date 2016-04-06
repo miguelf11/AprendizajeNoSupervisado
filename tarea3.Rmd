@@ -1,0 +1,62 @@
+---
+title: "tarea3"
+author: "Miguel Figueira"
+date: "6 de abril de 2016"
+output: word_document
+---
+
+- Leer archivos
+
+```{r}
+setwd("C:/Users/Alex/Documents/R/DM_T3/AprendizajeNoSupervisado")
+
+a = read.csv(file = "a.csv",header= F)
+
+a.big = read.csv(file = "a_big.csv",header=F)
+
+good.luck = read.csv(file = "good_luck.csv",header = F)
+
+guess = read.csv(file = "guess.csv",header = F)
+
+h = read.csv(file = "h.csv", header = F)
+
+help = read.csv(file = "help.csv",header = F)
+
+moon = read.csv(file = "moon.csv",header = F)
+
+s = read.csv(file = "s.csv",header = F)
+```
+
+
+- Plot data set a
+
+```{r}
+plot(a$V1,
+     a$V2,
+     col = a$V3,
+     xlim = c(min(a$V1-0.5), max(a$V1+0.5)),
+     ylim = c(min(a$V2-0.5), max(a$V2+0.5)),
+     xlab = "X",
+     ylab = "Y",
+     main = "Clustering Rectangular del dataset a")
+```
+
+
+- Hacer el k-medias
+
+```{r}
+
+modelo.k.medias = kmeans(x = a[, c("V1", "V2")],
+                         centers = 3)
+
+plot(x = a$V1,
+     y = a$V2,
+     col = modelo.k.medias$cluster)
+
+points(x = modelo.k.medias$centers[, c("V1", "V2")],
+       col = 1:4, pch = 19, cex = 3)
+```
+
+
+
+
