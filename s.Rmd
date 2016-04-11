@@ -1,0 +1,393 @@
+---
+title: "s"
+author: "Miguel Figueira"
+date: "8 de abril de 2016"
+output: html_document
+---
+
+# S.csv
+
+```{r setup,warning=FALSE}
+library("knitr")
+library("rgl")
+library("rglwidget")
+knit_hooks$set(webgl = hook_webgl)
+
+```
+
+
+```{r, echo=F,warning=FALSE}
+codo.jambu= function(data){
+  aux.jambu <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:15) aux.jambu[i] <- sum(kmeans(data, centers=i)$withinss)
+  plot(1:15,
+       aux.jambu,
+       type="b",
+       xlab="Number of Clusters",
+       ylab="Within groups sum of squares")
+}
+
+ds.clust3d = function(ds,distan,metodo,nclass,clase = NULL){
+  
+  print(paste("el metodo es:",metodo,"usando distancia:",distan))
+  # Encontramos modelo
+  ds.matrix <- as.matrix(ds)
+  
+  distancia <- dist(x = ds.matrix , method = distan)
+  
+  cluster <- hclust(d = distancia,method = metodo)
+  
+  corte = cutree(tree = cluster, k= nclass)
+  
+  plot3d(x = ds$V1,
+         y = ds$V2,
+         z = ds$V3,
+         col = corte,
+         main = paste("Plot del corte con",nclass,"clases"))
+  
+  if(!is.null(clase)){
+    matriz.confusion<- table(clase,corte)
+    print("matriz de confusión")
+    print(matriz.confusion)
+    print(paste("precision:",accuracy <- sum(diag(matriz.confusion))/sum(matriz.confusion)))
+    
+  }
+  V1 <- c(paste(metodo))
+  V2 <- c(paste(distan))
+  V3 <- c(paste(sum(diag(matriz.confusion))/sum(matriz.confusion)))
+  b <- as.data.frame(V1)
+  b$V2 <- V2
+  b$V3 <- V3
+  return(b)
+  
+}
+
+```
+
+
+
+### 1.Leer el archivo 
+```{r, echo=T,warning=FALSE}
+s <- read.csv(file = "datos/s.csv",header = F)
+```
+
+
+### 2.Luego vemos el codo de jambu para ver cuantos "cluster" tiene 
+```{r, echo=F,warning=FALSE}
+codo.jambu(s[ ,c(1,2,3)])
+```
+
+De esta gráfica se determina que lo ideal son 3 o 4 clusters , yo decidí usar 3 cluster
+
+
+### 3.Plot del dataset sin clusters ( sin colores)
+
+```{r testgl, webgl=TRUE,warning=FALSE} 
+plot3d(x = s$V1,
+       y = s$V2,
+       z = s$V3,
+       main = "Plot del dataset s.csv")
+```
+De esta gráfica realmente no se puede apreciar la cantidad de clusters , por lo tanto es mejor guiarse por el "codo de jambu"
+
+
+
+3.Uso los valores para la función y aplico la función
+```{r, echo=T,warning=FALSE}
+aux<- s$V4[order(s$V4)]
+
+definir_clase = function(numero){
+  if(numero <= max(aux[1:(0.333*length(aux))]))
+    return(1)
+  else if(numero <= max(aux[1:(0.666*length(aux))]))
+    return(2)
+  else
+    return(3)
+}
+
+colo <- sapply(s$V4,definir_clase)
+
+```
+
+
+
+### Tabla de los grupos de s.csv
+La tabla de los colores muestra como son distribuidos equitativamente los clusters
+```{r, echo=T,warning=FALSE}
+table(colo)
+```
+
+
+
+### Gráfica de S con los grupos(colores) distribuidos equitativamente
+```{r testgl2, webgl=TRUE,warning=FALSE} 
+plot3d(x = s$V1,
+       y = s$V2,
+       z = s$V3,
+       col = colo,
+       main = "Plot del dataset s.csv")
+```
+Podemos observar que las curvas en la "S"" tiene rojo mezclados con los negros y rojos mezclados con los verdes , lo cual nos hace ver que la solución de distribuir equitativamente los grupos no es la mejor solución , por lo tanto la única forma de lograrlo es ir probando con los valores de tal manera que se pueda observar claramente cada cluster.
+
+
+```{r, echo=T,warning=FALSE}
+definir_clase = function(numero){
+  if(numero < -2.38)
+    return(1)
+  else if(numero < 0.68)
+    return(2)
+  else
+    return(3)
+}
+
+s$V4 <- sapply(s$V4,definir_clase)
+```
+
+
+
+### Tabla2 de los grupos de s.csv
+La tabla de los colores muestra como son distribuidos los cluster
+```{r, echo=T,warning=FALSE}
+table(s$V4)
+```
+
+
+
+### Gráfica de S 
+```{r testgl3, webgl=TRUE,warning=FALSE} 
+plot3d(x = s$V1,
+       y = s$V2,
+       z = s$V3,
+       col = s$V4,
+       main = "Plot del dataset s.csv")
+```
+
+
+## k-media
+
+### Aplicando k-media
+
+Se usa el ciclo ya que el algoritmo k-media asigna cualquier centro a cada cluster y los crea de distinto "color" o distinto valor , por lo tanto para poder realizar una matriz de confusión que de verda sirva para comparar es necesario tomar aquel que dé mayor precisión
+
+```{r, echo=T,warning=FALSE}
+accuracy <- 0
+
+for(i in 1:1000){
+  aux.kmedias = kmeans(x = s[ ,c(1,2,3)],
+                      centers = 3)
+  matriz <- table(aux.kmedias$cluster, s$V4)
+  
+  aux.accuracy <- sum(diag(matriz))/sum(matriz)
+  if(aux.accuracy > accuracy){
+    accuracy <- aux.accuracy
+    s.kmedias <- aux.kmedias
+  }
+}
+```
+
+### Gráfica del k-media
+```{r testgl4, webgl=TRUE,warning=FALSE} 
+plot3d(x = s$V1,
+       y = s$V2,
+       z = s$V3,
+       col = s.kmedias$cluster,
+       main = "Plot del k-media del dataset s.csv")
+```
+
+## Matriz de confusión:
+```{r, echo=T,warning=FALSE}
+matriz.confusion <- table(s.kmedias$cluster,s$V4)
+matriz.confusion
+```
+
+## Precisión
+```{r, echo=T,warning=FALSE}
+accuracy <- sum(diag(matriz.confusion))/sum(matriz.confusion)
+print(accuracy)
+```
+
+
+```{r, echo=F,warning=FALSE}
+V1 <- c(paste("k-media"))
+V2 <- c(paste("NA"))
+V3 <- c(paste(accuracy))
+df.kmedia <- as.data.frame(V1)
+df.kmedia$V2 <- V2
+df.kmedia$V3 <- V3
+```
+
+
+
+
+### Usando Hclust
+
+
+  
+  
+
+### Usando el método "ward.D"
+
+```{r testgl11, webgl=TRUE} 
+df <- ds.clust3d(ds = s[,c(1,2,3)],distan = "euclidean", metodo = "ward.D",
+           nclass = 3, clase = s$V4)
+
+```
+
+```{r testgl12, webgl=TRUE} 
+df2 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "maximum", metodo = "ward.D",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df2)
+```
+
+```{r testgl13, webgl=TRUE} 
+df3 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "manhattan", metodo = "ward.D",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df3)
+```
+
+
+### Usando el método "ward.D2"
+
+```{r testgl14, webgl=TRUE} 
+df4 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "euclidean", metodo = "ward.D2",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df4)
+```
+
+```{r testgl15, webgl=TRUE} 
+df5 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "maximum", metodo = "ward.D2",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df5)
+```
+
+```{r testgl16, webgl=TRUE} 
+df6 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "manhattan", metodo = "ward.D2",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df6)
+```
+
+
+
+
+### Usando el método "complete"
+
+```{r testgl20, webgl=TRUE} 
+df10 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "euclidean", metodo = "complete",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df10)
+```
+
+```{r testgl21, webgl=TRUE} 
+df11 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "maximum", metodo = "complete",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df11)
+```
+
+```{r testgl22, webgl=TRUE} 
+df12 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "manhattan", metodo = "complete",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df12)
+```
+
+
+
+
+
+### Usando el método "average"
+
+```{r testgl23, webgl=TRUE} 
+df13 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "euclidean", metodo = "average",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df13)
+```
+
+```{r testgl24, webgl=TRUE} 
+df14 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "maximum", metodo = "average",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df14)
+```
+
+```{r testgl25, webgl=TRUE} 
+df15 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "manhattan", metodo = "average",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df15)
+```                 
+
+
+
+
+### Usando el método "mcquitty"
+
+```{r testgl26, webgl=TRUE} 
+df16 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "euclidean", metodo = "mcquitty",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df16)
+```
+
+```{r testgl27, webgl=TRUE} 
+df17 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "maximum", metodo = "mcquitty",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df17)
+```
+
+```{r testgl28, webgl=TRUE} 
+df18 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "manhattan", metodo = "mcquitty",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df18)
+```   
+
+
+
+### Usando el método "median"
+
+```{r testgl29, webgl=TRUE} 
+df19 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "euclidean", metodo = "median",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df19)
+```
+
+
+```{r testgl31, webgl=TRUE} 
+df21 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "manhattan", metodo = "median",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df21)
+```  
+
+
+
+### Usando el método "centroid"
+
+```{r testgl32, webgl=TRUE} 
+df22 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "euclidean", metodo = "centroid",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df22)
+```
+
+```{r testgl33, webgl=TRUE} 
+df23 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "maximum", metodo = "centroid",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df23)
+```
+
+```{r testgl34, webgl=TRUE} 
+df24 <- ds.clust3d(ds = s[,c(1,2,3)],distan = "manhattan", metodo = "centroid",
+           nclass = 3, clase = s$V4)
+df <-rbind(df,df24)
+```  
+
+
+```{r, echo=T,warning=FALSE}
+df <- rbind(df,df.kmedia)
+colnames(df) <- c("metodo","distancia","accuracy")
+df<- df[order(df$accuracy,decreasing = TRUE), ] 
+print(df)
+
+```
+
+
+## Conclusiones
+
+- El método single no sirve para este dataset ya que los clasifica todas las instancias como el mismo grupo(por lo tanto se omite sus gráficas en el dataset)
+- El método median con distancia maximum tampoco se muestra porque solo agrupa entre 2 clusters
+
+

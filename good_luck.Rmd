@@ -1,0 +1,365 @@
+---
+title: "good_luck"
+author: "Miguel Figueira"
+date: "10 de abril de 2016"
+output: html_document
+---
+
+
+# good_luck.csv
+
+```{r, echo=F,warning=FALSE}
+
+codo.jambu= function(data){
+  aux.jambu <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:15) aux.jambu[i] <- sum(kmeans(data, centers=i)$withinss)
+  plot(1:15,
+       aux.jambu,
+       type="b",
+       xlab="Number of Clusters",
+       ylab="Within groups sum of squares")
+}
+
+
+
+
+
+ds.clust4d = function(ds,distan,metodo,nclass,clase = NULL){
+  
+  print(paste("el metodo es:",metodo,"usando distancia:",distan))
+  # Encontramos modelo
+  ds.matrix <- as.matrix(ds)
+  
+  distancia <- dist(x = ds.matrix , method = distan)
+  
+  cluster <- hclust(d = distancia,method = metodo)
+  
+  corte = cutree(tree = cluster, k= nclass)
+  
+  
+  matriz.confusion<- table(corte,clase)
+  print("matriz de confusión")
+  print(matriz.confusion)
+  mc <- matriz.confusion
+  print(paste("precision:",accuracy <- sum(diag(matriz.confusion))/sum(matriz.confusion)))
+  sensitividad1  <- round(x = (mc[1,1] / (mc[1,1] + mc[2,1])), digits = 4)
+  especificidad1 <- round(x = (mc[2,2] / (mc[1,2] + mc[2,2])), digits = 4)
+  print(paste("sensitividad:",sensitividad1))
+  print(paste("especificidad:",especificidad1))
+
+  V1 <- c(paste(metodo))
+  V2 <- c(paste(distan))
+  V3 <- c(paste(sum(diag(matriz.confusion))/sum(matriz.confusion)))
+  V4 <- c(paste(sensitividad1))
+  V5 <- c(paste(especificidad1))
+  b <- as.data.frame(V1)
+  b$V2 <- V2
+  b$V3 <- V3
+  b$V4 <- V4
+  b$V5 <- V5
+  
+  
+  
+  return(b)
+}
+
+```
+
+
+### 1.Leer el archivo 
+```{r, echo=T,warning=FALSE}
+setwd("C:/Users/Alex/Documents/R/DM_T3/AprendizajeNoSupervisado")
+good <- read.csv(file = "datos/good_luck.csv",header = F)
+```
+
+### 2.Tabla de las clases
+
+```{r, echo=T,warning=FALSE}
+table(good$V11)
+```
+Tiene solo 2 clases
+
+Es preferible "sumarle 1" ya que los algoritmos en R asignan valor a los clusters a partir del 1 y no del 0
+```{r, echo=T,warning=FALSE}
+good$V11 <- good$V11 + 1
+table(good$V11)
+```
+
+
+
+## Aplicando k-media
+
+Se usa el ciclo ya que el algoritmo k-media asigna cualquier centro a cada cluster y los crea de distinto "color" o distinto valor , por lo tanto para poder realizar una matriz de confusión que de verdad sirva para comparar es necesario tomar aquel que dé mayor precisión
+
+```{r, echo=T,warning=FALSE}
+accuracy <- 0
+
+for(i in 1:200){
+  aux.kmedias = kmeans(x = good[ ,1:10],
+                      centers = 2)
+  matriz <- table(aux.kmedias$cluster, good$V11)
+  
+  aux.accuracy <- sum(diag(matriz))/sum(matriz)
+  if(aux.accuracy > accuracy){
+    accuracy <- aux.accuracy
+    h.kmedias <- aux.kmedias
+  }
+}
+```
+
+## Matriz de confusión:
+```{r, echo=T,warning=FALSE}
+print(matriz.confusion <- table(h.kmedias$cluster,good$V11))
+```
+
+
+## Precisión , Sentividad y Especificidad
+```{r, echo=T,warning=FALSE}
+accuracy <- sum(diag(matriz.confusion))/sum(matriz.confusion)
+print(accuracy)
+mc <- matriz.confusion
+print(sensitividad  <- round(x = (mc[1,1] / (mc[1,1] + mc[2,1])), digits = 4))
+print(especificidad <- round(x = (mc[2,2] / (mc[1,2] + mc[2,2])), digits = 4))
+```
+
+
+
+```{r, echo=F,warning=FALSE}
+# crea el dataframe de la precisión de k-media
+# irrelevante para el informe
+
+V1 <- c(paste("k-media"))
+V2 <- c(paste("NA"))
+V3 <- c(paste(accuracy))
+
+V4 <- c(paste(sensitividad))
+V5 <- c(paste(especificidad))
+df.kmedia <- as.data.frame(V1)
+df.kmedia$V2 <- V2
+df.kmedia$V3 <- V3
+df.kmedia$V4 <- V4
+df.kmedia$V5 <- V5
+```
+
+
+
+### Usando el método "ward.D"
+
+```{r} 
+df <- ds.clust4d(ds = good[,1:10],distan = "euclidean", metodo = "ward.D",
+           nclass = 2, clase = good$V11)
+
+```
+
+```{r} 
+df2 <- ds.clust4d(ds = good[,1:10],distan = "maximum", metodo = "ward.D",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df2)
+```
+
+```{r} 
+df3 <- ds.clust4d(ds = good[,1:10],distan = "manhattan", metodo = "ward.D",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df3)
+```
+
+
+### Usando el método "ward.D2"
+
+```{r} 
+df4 <- ds.clust4d(ds = good[,1:10],distan = "euclidean", metodo = "ward.D2",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df4)
+```
+
+```{r} 
+df5 <- ds.clust4d(ds = good[,1:10],distan = "maximum", metodo = "ward.D2",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df5)
+```
+
+```{r} 
+df6 <- ds.clust4d(ds = good[,1:10],distan = "manhattan", metodo = "ward.D2",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df6)
+```
+
+
+
+
+### Usando el método "single"
+
+```{r} 
+df7 <- ds.clust4d(ds = good[,1:10],distan = "euclidean", metodo = "single",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df7)
+```
+
+```{r} 
+df8 <- ds.clust4d(ds = good[,1:10],distan = "maximum", metodo = "single",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df8)
+```
+
+```{r} 
+df9 <- ds.clust4d(ds = good[,1:10],distan = "manhattan", metodo = "single",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df9)
+```
+
+
+### Usando el método "complete"
+
+```{r} 
+df10 <- ds.clust4d(ds = good[,1:10],distan = "euclidean", metodo = "complete",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df10)
+```
+
+```{r} 
+df11 <- ds.clust4d(ds = good[,1:10],distan = "maximum", metodo = "complete",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df11)
+```
+
+```{r} 
+df12 <- ds.clust4d(ds = good[,1:10],distan = "manhattan", metodo = "complete",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df12)
+```
+
+
+
+
+
+### Usando el método "average"
+
+```{r} 
+df13 <- ds.clust4d(ds = good[,1:10],distan = "euclidean", metodo = "average",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df13)
+```
+
+```{r} 
+df14 <- ds.clust4d(ds = good[,1:10],distan = "maximum", metodo = "average",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df14)
+```
+
+```{r} 
+df15 <- ds.clust4d(ds = good[,1:10],distan = "manhattan", metodo = "average",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df15)
+```                 
+
+
+
+
+### Usando el método "mcquitty"
+
+```{r} 
+df16 <- ds.clust4d(ds = good[,1:10],distan = "euclidean", metodo = "mcquitty",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df16)
+```
+
+```{r} 
+df17 <- ds.clust4d(ds = good[,1:10],distan = "maximum", metodo = "mcquitty",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df17)
+```
+
+```{r} 
+df18 <- ds.clust4d(ds = good[,1:10],distan = "manhattan", metodo = "mcquitty",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df18)
+```   
+
+
+
+### Usando el método "median"
+
+```{r} 
+df19 <- ds.clust4d(ds = good[,1:10],distan = "euclidean", metodo = "median",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df19)
+```
+
+```{r} 
+df20 <- ds.clust4d(ds = good[,1:10],distan = "maximum", metodo = "median",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df20)
+```
+
+```{r} 
+df21 <- ds.clust4d(ds = good[,1:10],distan = "manhattan", metodo = "median",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df21)
+```  
+
+
+
+### Usando el método "centroid"
+
+```{r} 
+df22 <- ds.clust4d(ds = good[,1:10],distan = "euclidean", metodo = "centroid",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df22)
+```
+
+```{r} 
+df23 <- ds.clust4d(ds = good[,1:10],distan = "maximum", metodo = "centroid",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df23)
+```
+
+```{r} 
+df24 <- ds.clust4d(ds = good[,1:10],distan = "manhattan", metodo = "centroid",
+           nclass = 2, clase = good$V11)
+df <-rbind(df,df24)
+```  
+
+
+
+## Tabla con todos los accuracy
+```{r, echo=T,warning=FALSE}
+df <- rbind(df,df.kmedia)
+colnames(df) <- c("metodo","distancia","accuracy","sensitivad","especificidad")
+df<- df[order(df$accuracy,decreasing = TRUE), ] 
+print(df)
+```
+
+
+
+## Conclusiones
+
+
+Midiendo la tabla de los métodos son precisión , sensitividad y especificidad
+
+
+Podemos observar que algunos métodos que agrupan 1 como 1 muy bien , es decir tienen alta sensitividad(incluso 1 casi todos) pero tienen muy pero muy baja especificidad , por lo tanto estos métodos están totalmente descartados que son :
+
+método - distancia que usó 
+average - manhattan  
+mcquitty - manhattan  
+average - maximum    
+mcquitty - maximum   
+average - euclidean    
+single - euclidean    
+single -  maximum   
+single -  manhattan    
+median  - euclidean   
+median  -  maximum    
+median - manhattan    
+centroid - euclidean    
+centroid - maximum    
+centroid - manhattan   
+complete - euclidean
+
+
+Por lo tanto los métodos a escoger son:
+
+1- Hclust con método ward.D2  y con distancia manhattan (la de mayor precisión)
+
+2- k-media tiene casi tan buena precisión y tiene un mejor "balance" entre la sensitividad y la especificidad.
+

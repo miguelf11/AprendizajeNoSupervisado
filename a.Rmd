@@ -1,0 +1,226 @@
+---
+title: "tarea3"
+author: "Miguel Figueira"
+date: "6 de abril de 2016"
+output: html_document
+---
+
+
+##Nota : este rmd contiene a.csv y a_big.csv
+
+# a.csv
+
+
+```{r,echo = FALSE}
+ds.clust = function(ds,distan,metodo,nclass,clase){
+  
+  print(paste("el metodo es:",metodo,"usando distancia:",distan))
+  # Encontramos modelo
+  ds.matrix <- as.matrix(ds)
+  
+  distancia <- dist(x = ds.matrix , method = distan)
+  
+  cluster <- hclust(d = distancia,method = metodo)
+
+  corte = cutree(tree = cluster, k= nclass)
+  plot(x = ds$V1,
+       y = ds$V2,
+       col = corte,
+       xlab = "X",
+       ylab = "Y",
+       main = paste("Plot del corte con",nclass,"clases",metodo,distan))
+  
+  matriz.confusion<- table(corte,clase)
+  print("matriz de confusión")
+  print(matriz.confusion)
+  print(paste("precision:",accuracy <- sum(diag(matriz.confusion))/sum(matriz.confusion)))
+}
+
+
+distancias <- c("euclidean","maximum","manhattan")
+
+
+hclust.metodos <- c("ward.D", "ward.D2", "complete", "average", "mcquitty",
+                    "median", "centroid")
+
+
+```
+
+
+### 1. Leer el archivo 
+
+```{r}
+setwd("C:/Users/Alex/Documents/R/DM_T3/AprendizajeNoSupervisado")
+a <- read.csv(file = "datos/a.csv",header= F)
+```
+
+### 2. Mostrar la distribución de los resultados
+```{r}
+table(a$V3)
+```
+
+### 3. "Sumo 1" ya que los algoritmos de R k-mean y hclust devuelven valores a partir de 1 para cada cluster 
+```{r}
+a$V3 <- a$V3 +1 
+table(a$V3)
+```
+
+
+### 4.Gráfico el dataset 
+```{r,echo = FALSE}
+plot(x = a$V1,
+     y = a$V2,
+     col = a$V3,
+     xlim = c(min(a$V1-0.5), max(a$V1+0.5)),
+     ylim = c(min(a$V2-0.5), max(a$V2+0.5)),
+     xlab = "X",
+     ylab = "Y",
+     main = "Clustering Rectangular del dataset a")
+```
+
+
+## k-media
+
+### 1.Aplicando k-media
+
+Se usa un ciclo ya que el algoritmo k-media asigna cualquier centro a cada cluster y los crea de distinto "color" o distinto valor , por lo tanto para poder realizar una matriz de confusión que de verda sirva para comparar es necesario tomar aquel que dé mayor precisión.
+
+```{r, echo=T,warning=FALSE}
+accuracy <- 0
+
+for(i in 1:20){
+  aux.kmedias = kmeans(x = a[ ,c(1,2)],
+                      centers = 3)
+  
+  matriz <- table(aux.kmedias$cluster, a$V3)
+  
+  aux.accuracy <- sum(diag(matriz))/sum(matriz)
+  if(aux.accuracy > accuracy){
+    accuracy <- aux.accuracy
+    a.kmedias <- aux.kmedias
+  }
+}
+```
+
+
+### 2.Gráficando K-media
+```{r, echo=T,warning=FALSE}
+
+plot(x = a$V1,
+     y = a$V2,
+     col = a.kmedias$cluster,
+     main = "K-mean del dataset a")
+```
+
+
+### 3.Matriz de confusión
+```{r, echo=T,warning=FALSE}
+print(mc <- table(a.kmedias$cluster, a$V3))
+```
+
+### 4.Precisión
+```{r, echo=T,warning=FALSE}
+print(paste("precision:",precision <- sum(diag(mc))/sum(mc)))
+```
+
+
+
+- hclust
+
+```{r,echo=F}
+
+for(i in hclust.metodos){
+ for(j in distancias){
+   ds.clust(ds = a[,c(1,2)],distan = j, metodo = i,
+            nclass = 3, clase = a$V3)
+ }
+}
+```
+
+
+
+## Conclusión de a.csv 
+
+- Método single no sirve ya que solo identifica 1 solo cluster
+- Método centroid con distancia euclidean
+- Método single tampoco sirve para este dataset
+- Método complete con distancia euclidean tampoco funciona bien
+
+- Todos los demás funcionan bastante bien , el mejor es el k-media, pero los demás aunque algunos tengan "poca precisión" en general es porque le asigno otro valor a un cluster pero tiene la misma forma.
+
+
+
+
+
+
+# a_big.csv
+
+### 1. Leer el archivo 
+
+```{r}
+setwd("C:/Users/Alex/Documents/R/DM_T3/AprendizajeNoSupervisado")
+a.big <- read.csv(file = "datos/a_big.csv",header= F)
+```
+
+
+### 2. Mostrar la distribución de los resultados
+```{r}
+table(a.big$V3)
+```
+
+### 3. "Sumo 1" ya que los algoritmos de R k-mean y hclust devuelven valores a partir de 1 para cada cluster 
+```{r}
+a.big$V3 <- a.big$V3 +1 
+table(a.big$V3)
+```
+
+
+### 4.Gráfico el dataset 
+```{r,echo = FALSE}
+plot(x = a.big$V1,
+     y = a.big$V2,
+     col = a.big$V3,
+     xlim = c(min(a$V1-0.5), max(a$V1+0.5)),
+     ylim = c(min(a$V2-0.5), max(a$V2+0.5)),
+     xlab = "X",
+     ylab = "Y",
+     main = "Clustering Rectangular del dataset a")
+```
+
+- Se observa por la forma del dataset que  k-mean puede servir perfectamente
+
+
+## 1. Calcular k-mean
+- 1 sola iteración para que pueda calcularse
+```{r, echo=T,warning=FALSE}
+
+a.kmedias = kmeans(x = a.big[ ,c(1,2)],
+                     centers = 3,iter.max = 1)
+
+```
+
+### 2.Gráficando K-media
+```{r, echo=T,warning=FALSE}
+
+plot(x = a.big$V1,
+     y = a.big$V2,
+     col = a.kmedias$cluster,
+     main = "K-mean del dataset a")
+```
+
+### 3.Matriz de confusión
+```{r, echo=T,warning=FALSE}
+print(mc <- table(a.kmedias$cluster, a.big$V3))
+```
+
+### 4.Precisión
+```{r, echo=T,warning=FALSE}
+print(paste("precision:",precision <- sum(diag(mc))/sum(mc)))
+```
+
+
+
+
+
+
+
