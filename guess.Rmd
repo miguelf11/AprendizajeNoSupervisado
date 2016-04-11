@@ -10,8 +10,6 @@ output: html_document
 
 ```{r, echo=F,warning=FALSE}
 
-
-
 ds.clust = function(ds,distan,metodo,nclass){
   
   print(paste("el metodo es:",metodo,"usando distancia:",distan))

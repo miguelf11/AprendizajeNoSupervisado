@@ -12,9 +12,11 @@ output: html_document
 
 codo.jambu= function(data){
   aux.jambu <- (nrow(data)-1)*sum(apply(data,2,var))
-  for (i in 2:15) aux.jambu[i] <- sum(kmeans(data, centers=i)$withinss)
-  plot(1:15,
-       aux.jambu,
+  for (i in 2:15){
+    aux.jambu[i] <- sum(kmeans(data, centers=i)$withinss)
+  } 
+  plot(x = 1:15,
+       y = aux.jambu,
        type="b",
        xlab="Number of Clusters",
        ylab="Within groups sum of squares")
